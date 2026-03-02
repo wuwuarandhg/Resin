@@ -1630,6 +1630,12 @@ a {
   font-weight: 600;
 }
 
+.field-label-with-info {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .field-error {
   color: #ad3629;
   font-size: 12px;

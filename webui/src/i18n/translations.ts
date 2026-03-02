@@ -249,6 +249,11 @@ const EXACT_ZH_TO_EN: Record<string, string> = {
   "地区过滤规则": "Region filters",
   "地区过滤规则（可选）": "Region filters (optional)",
   "每行一条": "One per line",
+  "每行一条，例如 .*专线.* 或 <订阅名>/.*": "One per line, e.g. .*Dedicated.* or <SubscriptionName>/.*",
+  "技巧：<订阅名>/.* 可筛选来自该订阅的节点。":
+    "Tip: use <SubscriptionName>/.* to match nodes from that subscription.",
+  "满足所有正则表达式的节点才会被选择":
+    "Only nodes that satisfy all regex expressions will be selected.",
   "每行一条，如 hk / us": "One per line, e.g. hk / us",
   "每行一个 header，例如 Authorization": "One header per line, e.g. Authorization",
   "输入地址查看命中规则和请求头。": "Enter URL to view matched rule and headers.",

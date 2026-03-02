@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, Plus, RefreshCw, Search, Sparkles } from "lucide-react";
+import { AlertTriangle, Info, Plus, RefreshCw, Search, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
@@ -304,10 +304,26 @@ export function PlatformPage() {
               </div>
 
               <div className="field-group">
-                <label className="field-label" htmlFor="create-regex">
-                  {t("节点名正则过滤规则（可选）")}
+                <label className="field-label field-label-with-info" htmlFor="create-regex">
+                  <span>{t("节点名正则过滤规则（可选）")}</span>
+                  <span
+                    className="subscription-info-icon"
+                    title={t("满足所有正则表达式的节点才会被选择")}
+                    aria-label={t("满足所有正则表达式的节点才会被选择")}
+                    tabIndex={0}
+                  >
+                    <Info size={13} />
+                  </span>
                 </label>
-                <Textarea id="create-regex" rows={4} placeholder={t("每行一条")} {...createForm.register("regex_filters_text")} />
+                <Textarea
+                  id="create-regex"
+                  rows={4}
+                  placeholder={t("每行一条，例如 .*专线.* 或 <订阅名>/.*")}
+                  {...createForm.register("regex_filters_text")}
+                />
+                <p className="muted" style={{ marginTop: 4, fontSize: 12 }}>
+                  {t("技巧：<订阅名>/.* 可筛选来自该订阅的节点。")}
+                </p>
               </div>
 
               <div className="field-group">
