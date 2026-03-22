@@ -32,6 +32,17 @@ type Subscription struct {
 	UpdatedAtNs               int64  `json:"updated_at_ns"`
 }
 
+// ScraperSource represents a proxy scraping source configuration.
+type ScraperSource struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	URL         string `json:"url"`
+	Protocol    string `json:"protocol"`   // "http", "socks5", "socks4"
+	Format      string `json:"format"`     // "txt", "json_geonode", "json_sockslist", "json_pubproxy", "json_proxifly"
+	Enabled     bool   `json:"enabled"`
+	CreatedAtNs int64  `json:"created_at_ns"`
+}
+
 // AccountHeaderRule defines header extraction rules for reverse proxy account matching.
 type AccountHeaderRule struct {
 	URLPrefix   string `json:"url_prefix"`

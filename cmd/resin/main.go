@@ -27,6 +27,7 @@ import (
 	"github.com/Resinat/Resin/internal/proxy"
 	"github.com/Resinat/Resin/internal/requestlog"
 	"github.com/Resinat/Resin/internal/routing"
+	"github.com/Resinat/Resin/internal/scraper"
 	"github.com/Resinat/Resin/internal/state"
 	"github.com/Resinat/Resin/internal/subscription"
 	"github.com/Resinat/Resin/internal/topology"
@@ -330,6 +331,26 @@ func newTopologyRuntime(
 		SubManager: subManager,
 		Pool:       pool,
 		Downloader: downloader,
+		ScraperFetcher: func() ([]byte, error) {
+			dbSources, err := engine.ListScraperSources()
+			if err != nil {
+				return nil, fmt.Errorf("load scraper sources: %w", err)
+			}
+			var sources []scraper.Source
+			for _, s := range dbSources {
+				if !s.Enabled {
+					continue
+				}
+				sources = append(sources, scraper.Source{
+					ID:       s.ID,
+					Name:     s.Name,
+					URL:      s.URL,
+					Protocol: s.Protocol,
+					Format:   s.Format,
+				})
+			}
+			return scraper.Fetch(context.Background(), scraper.DefaultConfig, sources)
+		},
 		OnSubReenabledNode: func(hash node.Hash) {
 			outboundMgr.EnsureNodeOutbound(hash)
 			probeMgr.TriggerImmediateEgressProbe(hash)

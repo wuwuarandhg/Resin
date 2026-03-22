@@ -3,3 +3,11 @@ sing-box-reference
 .agents
 .devcontainer
 start-instance.sh
+
+# OS
+.DS_Store
+
+# AI/Claude
+.claude/
+CLAUDE.md
+**/CLAUDE.md

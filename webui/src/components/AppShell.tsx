@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   AlertTriangle,
   Database,
+  Globe,
   LayoutDashboard,
   LogOut,
   Logs,
@@ -31,6 +32,7 @@ const navItems: NavItem[] = [
   { label: "平台管理", path: "/platforms", icon: Server },
   { label: "订阅管理", path: "/subscriptions", icon: Rss },
   { label: "节点池", path: "/nodes", icon: Network },
+  { label: "抓取源", path: "/scraper-sources", icon: Globe },
   { label: "请求头规则", path: "/rules", icon: Regex },
   { label: "请求日志", path: "/request-logs", icon: Logs },
   { label: "资源", path: "/resources", icon: Database },

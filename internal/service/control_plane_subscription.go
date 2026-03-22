@@ -133,10 +133,10 @@ func parseSubscriptionSourceType(raw *string) (string, *ServiceError) {
 	}
 	value := strings.ToLower(strings.TrimSpace(*raw))
 	switch value {
-	case subscription.SourceTypeRemote, subscription.SourceTypeLocal:
+	case subscription.SourceTypeRemote, subscription.SourceTypeLocal, subscription.SourceTypeScrape:
 		return value, nil
 	default:
-		return "", invalidArg("source_type: must be remote or local")
+		return "", invalidArg("source_type: must be remote, local, or scrape")
 	}
 }
 
@@ -174,8 +174,15 @@ func (s *ControlPlaneService) CreateSubscription(req CreateSubscriptionRequest) 
 		if req.URL != nil && strings.TrimSpace(*req.URL) != "" {
 			return nil, invalidArg("url is not allowed for local subscription")
 		}
+	case subscription.SourceTypeScrape:
+		if req.URL != nil && strings.TrimSpace(*req.URL) != "" {
+			return nil, invalidArg("url is not allowed for scrape subscription")
+		}
+		if req.Content != nil && strings.TrimSpace(*req.Content) != "" {
+			return nil, invalidArg("content is not allowed for scrape subscription")
+		}
 	default:
-		return nil, invalidArg("source_type: must be remote or local")
+		return nil, invalidArg("source_type: must be remote, local, or scrape")
 	}
 
 	updateInterval := 5 * time.Minute
@@ -283,8 +290,11 @@ func (s *ControlPlaneService) UpdateSubscription(id string, patchJSON json.RawMe
 	if urlStr, ok, err := patch.optionalString("url"); err != nil {
 		return nil, err
 	} else if ok {
-		if sourceType != subscription.SourceTypeRemote {
+		if sourceType == subscription.SourceTypeLocal {
 			return nil, invalidArg("url: field is not allowed for local subscription")
+		}
+		if sourceType == subscription.SourceTypeScrape {
+			return nil, invalidArg("url: field is not allowed for scrape subscription")
 		}
 		if _, verr := parseHTTPAbsoluteURL("url", urlStr); verr != nil {
 			return nil, verr
@@ -299,8 +309,11 @@ func (s *ControlPlaneService) UpdateSubscription(id string, patchJSON json.RawMe
 	if contentStr, ok, err := patch.optionalString("content"); err != nil {
 		return nil, err
 	} else if ok {
-		if sourceType != subscription.SourceTypeLocal {
+		if sourceType == subscription.SourceTypeRemote {
 			return nil, invalidArg("content: field is not allowed for remote subscription")
+		}
+		if sourceType == subscription.SourceTypeScrape {
+			return nil, invalidArg("content: field is not allowed for scrape subscription")
 		}
 		if strings.TrimSpace(contentStr) == "" {
 			return nil, invalidArg("content: must be a non-empty string")

@@ -101,6 +101,12 @@ func NewServerWithAddress(
 		authed.Handle("POST /api/v1/subscriptions/{id}/actions/refresh", HandleRefreshSubscription(cp))
 		authed.Handle("POST /api/v1/subscriptions/{id}/actions/cleanup-circuit-open-nodes", HandleCleanupSubscriptionCircuitOpenNodes(cp))
 
+		// Scraper sources.
+		authed.Handle("GET /api/v1/scraper/sources", HandleListScraperSources(cp))
+		authed.Handle("POST /api/v1/scraper/sources", HandleCreateScraperSource(cp))
+		authed.Handle("PATCH /api/v1/scraper/sources/{id}", HandleUpdateScraperSource(cp))
+		authed.Handle("DELETE /api/v1/scraper/sources/{id}", HandleDeleteScraperSource(cp))
+
 		// Account header rules.
 		authed.Handle("GET /api/v1/account-header-rules", HandleListRules(cp))
 		// Canonical route (DESIGN.md): url_prefix comes from path parameter only.

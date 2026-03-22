@@ -11,6 +11,7 @@ import { RequestLogsPage } from "../features/requestLogs/RequestLogsPage";
 import { RulesPage } from "../features/rules/RulesPage";
 import { SubscriptionPage } from "../features/subscriptions/SubscriptionPage";
 import { SystemConfigPage } from "../features/systemConfig/SystemConfigPage";
+import { ScraperSourcesPage } from "../features/scraperSources/ScraperSourcesPage";
 
 function NodesRoute() {
   const location = useLocation();
@@ -38,6 +39,7 @@ export function AppRoutes() {
         <Route path="/rules" element={<RulesPage />} />
         <Route path="/request-logs" element={<RequestLogsPage />} />
         <Route path="/resources" element={<GeoIPPage />} />
+        <Route path="/scraper-sources" element={<ScraperSourcesPage />} />
         <Route path="/system-config" element={<SystemConfigPage />} />
       </Route>
 

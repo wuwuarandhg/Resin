@@ -291,8 +291,8 @@ func (r *StateRepo) UpsertSubscription(s model.Subscription) error {
 	if s.SourceType == "" {
 		s.SourceType = "remote"
 	}
-	if s.SourceType != "remote" && s.SourceType != "local" {
-		return fmt.Errorf("source_type: must be remote or local, got %q", s.SourceType)
+	if s.SourceType != "remote" && s.SourceType != "local" && s.SourceType != "scrape" {
+		return fmt.Errorf("source_type: must be remote, local, or scrape, got %q", s.SourceType)
 	}
 
 	r.mu.Lock()
@@ -442,6 +442,71 @@ func (r *StateRepo) DeleteAccountHeaderRule(prefix string) error {
 		return ErrNotFound
 	}
 	return nil
+}
+
+// --- scraper_sources ---
+
+// UpsertScraperSource inserts or updates a scraper source.
+func (r *StateRepo) UpsertScraperSource(s model.ScraperSource) error {
+	if s.ID == "" {
+		return fmt.Errorf("scraper_source: id is required")
+	}
+	if s.Name == "" {
+		return fmt.Errorf("scraper_source: name is required")
+	}
+	if s.URL == "" {
+		return fmt.Errorf("scraper_source: url is required")
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	_, err := r.db.Exec(`
+		INSERT INTO scraper_sources (id, name, url, protocol, format, enabled, created_at_ns)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
+		ON CONFLICT(id) DO UPDATE SET
+			name     = excluded.name,
+			url      = excluded.url,
+			protocol = excluded.protocol,
+			format   = excluded.format,
+			enabled  = excluded.enabled
+	`, s.ID, s.Name, s.URL, s.Protocol, s.Format, s.Enabled, s.CreatedAtNs)
+	return err
+}
+
+// DeleteScraperSource removes a scraper source by ID.
+func (r *StateRepo) DeleteScraperSource(id string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	result, err := r.db.Exec("DELETE FROM scraper_sources WHERE id = ?", id)
+	if err != nil {
+		return err
+	}
+	n, _ := result.RowsAffected()
+	if n == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// ListScraperSources returns all scraper sources.
+func (r *StateRepo) ListScraperSources() ([]model.ScraperSource, error) {
+	rows, err := r.db.Query(
+		"SELECT id, name, url, protocol, format, enabled, created_at_ns FROM scraper_sources ORDER BY created_at_ns ASC, id ASC",
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var result []model.ScraperSource
+	for rows.Next() {
+		var s model.ScraperSource
+		var enabled int
+		if err := rows.Scan(&s.ID, &s.Name, &s.URL, &s.Protocol, &s.Format, &enabled, &s.CreatedAtNs); err != nil {
+			return nil, err
+		}
+		s.Enabled = enabled != 0
+		result = append(result, s)
+	}
+	return result, rows.Err()
 }
 
 // ListAccountHeaderRules returns all rules.

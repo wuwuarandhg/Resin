@@ -17,6 +17,8 @@ const (
 	SourceTypeRemote = "remote"
 	// SourceTypeLocal reads subscription content from local text content.
 	SourceTypeLocal = "local"
+	// SourceTypeScrape fetches free proxies from public APIs via the scraper.
+	SourceTypeScrape = "scrape"
 )
 
 // ManagedNode represents one hash entry in subscription managed nodes.
@@ -335,6 +337,8 @@ func normalizeSourceType(sourceType string) string {
 	switch sourceType {
 	case SourceTypeLocal:
 		return SourceTypeLocal
+	case SourceTypeScrape:
+		return SourceTypeScrape
 	default:
 		return SourceTypeRemote
 	}

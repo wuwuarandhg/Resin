@@ -2,6 +2,7 @@ package topology
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"runtime"
 	"sync"
@@ -27,6 +28,9 @@ type SubscriptionScheduler struct {
 	// Defaults to downloader.Download; injectable for testing.
 	Fetcher func(url string) ([]byte, error)
 
+	// ScraperFetcher fetches free proxies for scrape-type subscriptions.
+	ScraperFetcher func() ([]byte, error)
+
 	// For persistence.
 	onSubUpdated func(sub *subscription.Subscription)
 	// onSubReenabledNode is called for each non-evicted node hash when a
@@ -43,7 +47,10 @@ type SchedulerConfig struct {
 	Pool         *GlobalNodePool
 	Downloader   netutil.Downloader               // shared downloader
 	Fetcher      func(url string) ([]byte, error) // optional, defaults to Downloader.Download
-	OnSubUpdated func(sub *subscription.Subscription)
+	// ScraperFetcher is called for subscriptions with source_type="scrape".
+	// When nil, scrape-type subscriptions will fail with an error.
+	ScraperFetcher func() ([]byte, error)
+	OnSubUpdated   func(sub *subscription.Subscription)
 	// OnSubReenabledNode is fired after false->true enabled transition.
 	OnSubReenabledNode func(hash node.Hash)
 }
@@ -66,6 +73,7 @@ func NewSubscriptionScheduler(cfg SchedulerConfig) *SubscriptionScheduler {
 	} else {
 		sched.Fetcher = sched.fetchViaDownloader
 	}
+	sched.ScraperFetcher = cfg.ScraperFetcher
 	return sched
 }
 
@@ -202,9 +210,20 @@ func (s *SubscriptionScheduler) UpdateSubscription(sub *subscription.Subscriptio
 		body []byte
 		err  error
 	)
-	if attemptSourceType == subscription.SourceTypeLocal {
+	switch attemptSourceType {
+	case subscription.SourceTypeLocal:
 		body = []byte(attemptContent)
-	} else {
+	case subscription.SourceTypeScrape:
+		if s.ScraperFetcher == nil {
+			err = fmt.Errorf("scrape fetcher not configured")
+		} else {
+			body, err = s.ScraperFetcher()
+		}
+		if err != nil {
+			s.handleUpdateFailure(sub, attemptStartedNs, attemptConfigVersion, "scrape", err)
+			return
+		}
+	default:
 		body, err = s.Fetcher(attemptURL)
 		if err != nil {
 			s.handleUpdateFailure(sub, attemptStartedNs, attemptConfigVersion, "fetch", err)
