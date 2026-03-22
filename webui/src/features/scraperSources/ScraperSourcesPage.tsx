@@ -89,6 +89,10 @@ function scraperSourceToEditForm(source: ScraperSource): ScraperSourceEditForm {
   };
 }
 
+function isCredentialTemplateSource(source: Pick<ScraperSource, "name" | "url">): boolean {
+  return source.name.toLowerCase().includes("template") || source.url.includes("REPLACE_ME");
+}
+
 export function ScraperSourcesPage() {
   const { t } = useI18n();
   const [search, setSearch] = useState("");
@@ -238,7 +242,16 @@ export function ScraperSourcesPage() {
     () => [
       col.accessor("name", {
         header: t("名称"),
-        cell: (info) => <p className="scraper-name-cell">{info.getValue()}</p>,
+        cell: (info) => {
+          const source = info.row.original;
+          const template = isCredentialTemplateSource(source);
+          return (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <p className="scraper-name-cell">{info.getValue()}</p>
+              {template ? <Badge variant="warning">{t("需填写凭证")}</Badge> : null}
+            </div>
+          );
+        },
       }),
       col.accessor("url", {
         header: t("URL"),
@@ -314,6 +327,11 @@ export function ScraperSourcesPage() {
       </header>
 
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+
+      <div className="callout callout-warning">
+        <AlertTriangle size={14} />
+        <span>{t("带 Template 的抓取源为凭证模板，需先替换 URL 中的占位符并保存后再启用。")}</span>
+      </div>
 
       <Card className="platform-list-card platform-directory-card">
         <div className="list-card-header">
@@ -504,6 +522,15 @@ export function ScraperSourcesPage() {
             </div>
 
             <form className="form-grid" onSubmit={onEditSubmit}>
+              {isCredentialTemplateSource(selectedSource) ? (
+                <div className="field-group field-span-2">
+                  <div className="callout callout-warning">
+                    <AlertTriangle size={14} />
+                    <span>{t("当前抓取源是凭证模板。请先将 URL 里的 REPLACE_ME 替换为真实凭证，再启用此源。")}</span>
+                  </div>
+                </div>
+              ) : null}
+
               <div className="field-group field-span-2">
                 <label className="field-label" htmlFor="edit-name">
                   {t("名称")}

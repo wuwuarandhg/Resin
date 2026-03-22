@@ -9,7 +9,7 @@ import type {
 const basePath = "/api/v1/subscriptions";
 
 type ApiSubscription = Omit<Subscription, "last_checked" | "last_updated" | "last_error"> & {
-  source_type?: "remote" | "local";
+  source_type?: "remote" | "local" | "scrape";
   content?: string;
   last_checked?: string | null;
   last_updated?: string | null;

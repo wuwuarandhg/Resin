@@ -33,6 +33,11 @@ const EXACT_ZH_TO_EN: Record<string, string> = {
   "确认删除抓取源 {{name}}？": "Delete scraper source {{name}}?",
   "新建抓取源": "New Scraper Source",
   "编辑抓取源": "Edit Scraper Source",
+  "需填写凭证": "Credentials required",
+  "带 Template 的抓取源为凭证模板，需先替换 URL 中的占位符并保存后再启用。":
+    "Sources with Template in the name are credential templates. Replace placeholders in the URL and save before enabling.",
+  "当前抓取源是凭证模板。请先将 URL 里的 REPLACE_ME 替换为真实凭证，再启用此源。":
+    "This scraper source is a credential template. Replace REPLACE_ME in the URL with real credentials before enabling it.",
   "例如：ProxyScrape SOCKS5": "e.g. ProxyScrape SOCKS5",
   "例如：https://api.proxyscrape.com/...": "e.g. https://api.proxyscrape.com/...",
   "格式": "Format",
@@ -169,8 +174,13 @@ const EXACT_ZH_TO_EN: Record<string, string> = {
   "本地订阅": "Local subscription",
   "远程": "Remote",
   "本地": "Local",
+  "自动抓取": "Auto scrape",
   "从 HTTP/HTTPS 订阅链接拉取内容": "Fetch content from HTTP/HTTPS subscription URL",
   "直接填写订阅文本，不经过网络拉取": "Provide subscription text directly without network fetch",
+  "从所有已启用抓取源自动聚合代理": "Aggregate proxies automatically from all enabled scraper sources",
+  "自动从所有已启用抓取源聚合代理，不需要填写 URL 或订阅内容。":
+    "Automatically aggregate proxies from all enabled scraper sources. No URL or subscription content is required.",
+  "去管理抓取源": "Manage scraper sources",
   "支持格式（每行一个样例）：": "Supported formats (one example per line):",
   "支持格式：": "Supported formats:",
   "sing-box / Clash|Mihomo / URI（vmess:// vless:// trojan:// ss:// ...）或他们的 base64 格式":
@@ -385,6 +395,8 @@ const EXACT_ZH_TO_EN: Record<string, string> = {
     "Update URL, refresh interval, and enable switch, then save.",
   "更新本地订阅配置、刷新周期与状态开关后点击保存。":
     "Update local subscription config, refresh interval, and enable switch, then save.",
+  "更新自动抓取配置、刷新周期与状态开关后点击保存。":
+    "Update auto-scrape settings, refresh interval, and enable switch, then save.",
   "缓存刷盘脏阈值": "Cache flush dirty threshold",
   "缓存异步刷盘间隔": "Async cache flush interval",
   "基础与健康检查": "Basics and health checks",
@@ -578,6 +590,7 @@ const EXACT_ZH_TO_EN: Record<string, string> = {
   "暂不支持的 Content-Encoding: {{token}}": "Unsupported Content-Encoding: {{token}}",
   "Content-Encoding={{token}} 解压失败": "Failed to decode Content-Encoding={{token}}",
   "[Body 解码失败：{{message}}]": "[Body decode failed: {{message}}]",
+  "例如 1h": "e.g. 1h",
   "{{count}} 个可用节点": "{{count}} available nodes",
   "{{count}} 项待提交": "{{count}} pending changes",
   "{{field}} 不能为空": "{{field}} cannot be empty",

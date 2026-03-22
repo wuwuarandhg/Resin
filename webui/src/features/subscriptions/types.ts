@@ -1,7 +1,7 @@
 export type Subscription = {
   id: string;
   name: string;
-  source_type: "remote" | "local";
+  source_type: "remote" | "local" | "scrape";
   url: string;
   content: string;
   update_interval: string;
@@ -25,7 +25,7 @@ export type PageResponse<T> = {
 
 export type SubscriptionCreateInput = {
   name: string;
-  source_type?: "remote" | "local";
+  source_type?: "remote" | "local" | "scrape";
   url?: string;
   content?: string;
   update_interval?: string;

@@ -31,16 +31,17 @@ import {
 import type { Subscription } from "./types";
 
 type EnabledFilter = "all" | "enabled" | "disabled";
-type SubscriptionSourceType = "remote" | "local";
+type SubscriptionSourceType = "remote" | "local" | "scrape";
 
 const SUBSCRIPTION_SOURCE_TABS: Array<{ key: SubscriptionSourceType; label: string; hint: string }> = [
   { key: "remote", label: "远程", hint: "从 HTTP/HTTPS 订阅链接拉取内容" },
   { key: "local", label: "本地", hint: "直接填写订阅文本，不经过网络拉取" },
+  { key: "scrape", label: "自动抓取", hint: "从所有已启用抓取源自动聚合代理" },
 ];
 
 const subscriptionCreateSchema = z.object({
   name: z.string().trim().min(1, "订阅名称不能为空"),
-  source_type: z.enum(["remote", "local"]),
+  source_type: z.enum(["remote", "local", "scrape"]),
   url: z.string(),
   content: z.string(),
   update_interval: z.string().trim().min(1, "更新间隔不能为空"),
@@ -60,6 +61,9 @@ const subscriptionCreateSchema = z.object({
     }
     return;
   }
+  if (value.source_type === "scrape") {
+    return;
+  }
   if (!content) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["content"], message: "订阅内容不能为空" });
   }
@@ -71,7 +75,9 @@ type SubscriptionCreateForm = z.infer<typeof subscriptionCreateSchema>;
 type SubscriptionEditForm = z.infer<typeof subscriptionEditSchema>;
 const EMPTY_SUBSCRIPTIONS: Subscription[] = [];
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const;
+const REMOTE_SOURCE_UPDATE_INTERVAL = "12h";
 const LOCAL_SOURCE_UPDATE_INTERVAL = "12h";
+const SCRAPE_SOURCE_UPDATE_INTERVAL = "1h";
 const SUBSCRIPTION_DISABLE_HINT = "禁用订阅后，相关节点不会参与平台路由、健康统计或自动探测。";
 const SUBSCRIPTION_EPHEMERAL_HINT = "临时订阅的非健康节点会在一段时间后被自动删除。订阅本身不会被删除。";
 
@@ -97,7 +103,45 @@ function subscriptionToEditForm(subscription: Subscription): SubscriptionEditFor
 }
 
 function sourceTypeLabel(sourceType: SubscriptionSourceType): string {
-  return sourceType === "local" ? "本地" : "远程";
+  switch (sourceType) {
+    case "local":
+      return "本地";
+    case "scrape":
+      return "自动抓取";
+    default:
+      return "远程";
+  }
+}
+
+function defaultUpdateIntervalForSourceType(sourceType: SubscriptionSourceType): string {
+  switch (sourceType) {
+    case "scrape":
+      return SCRAPE_SOURCE_UPDATE_INTERVAL;
+    case "local":
+      return LOCAL_SOURCE_UPDATE_INTERVAL;
+    default:
+      return REMOTE_SOURCE_UPDATE_INTERVAL;
+  }
+}
+
+function isUrlSourceType(sourceType: SubscriptionSourceType): boolean {
+  return sourceType === "remote";
+}
+
+function isContentSourceType(sourceType: SubscriptionSourceType): boolean {
+  return sourceType === "local";
+}
+
+function isAutoScrapeSourceType(sourceType: SubscriptionSourceType): boolean {
+  return sourceType === "scrape";
+}
+
+function supportsCustomUpdateInterval(sourceType: SubscriptionSourceType): boolean {
+  return sourceType !== "local";
+}
+
+function updateIntervalPlaceholder(sourceType: SubscriptionSourceType): string {
+  return sourceType === "scrape" ? "例如 1h" : "例如 12h";
 }
 
 function parseEnabledFilter(value: EnabledFilter): boolean | undefined {
@@ -177,7 +221,7 @@ export function SubscriptionPage() {
       source_type: "remote",
       url: "",
       content: "",
-      update_interval: "12h",
+      update_interval: defaultUpdateIntervalForSourceType("remote"),
       ephemeral_node_evict_delay: "72h",
       enabled: true,
       ephemeral: false,
@@ -194,7 +238,7 @@ export function SubscriptionPage() {
       source_type: "remote",
       url: "",
       content: "",
-      update_interval: "12h",
+      update_interval: defaultUpdateIntervalForSourceType("remote"),
       ephemeral_node_evict_delay: "72h",
       enabled: true,
       ephemeral: false,
@@ -203,6 +247,16 @@ export function SubscriptionPage() {
 
   const editEphemeral = editForm.watch("ephemeral");
   const editSourceType = editForm.watch("source_type");
+
+  const handleCreateSourceTypeChange = useCallback((nextType: SubscriptionSourceType) => {
+    const currentType = createForm.getValues("source_type");
+    const currentInterval = createForm.getValues("update_interval").trim();
+    const currentDefault = defaultUpdateIntervalForSourceType(currentType);
+    if (!currentInterval || currentInterval === currentDefault) {
+      createForm.setValue("update_interval", defaultUpdateIntervalForSourceType(nextType), { shouldDirty: true });
+    }
+    createForm.setValue("source_type", nextType, { shouldDirty: true, shouldValidate: true });
+  }, [createForm]);
 
   useEffect(() => {
     if (!selectedSubscription) {
@@ -248,7 +302,7 @@ export function SubscriptionPage() {
         source_type: "remote",
         url: "",
         content: "",
-        update_interval: LOCAL_SOURCE_UPDATE_INTERVAL,
+        update_interval: defaultUpdateIntervalForSourceType("remote"),
         ephemeral_node_evict_delay: "72h",
         enabled: true,
         ephemeral: false,
@@ -272,9 +326,11 @@ export function SubscriptionPage() {
         ephemeral_node_evict_delay: formData.ephemeral_node_evict_delay.trim(),
         enabled: formData.enabled,
         ephemeral: formData.ephemeral,
-        ...(formData.source_type === "remote"
+        ...(isUrlSourceType(formData.source_type)
           ? { url: formData.url.trim() }
-          : { content: formData.content }),
+          : isContentSourceType(formData.source_type)
+            ? { content: formData.content }
+            : {}),
       };
       return updateSubscription(selectedSubscription.id, payload);
     },
@@ -350,9 +406,11 @@ export function SubscriptionPage() {
       ephemeral_node_evict_delay: values.ephemeral_node_evict_delay.trim(),
       enabled: values.enabled,
       ephemeral: values.ephemeral,
-      ...(values.source_type === "remote"
+      ...(isUrlSourceType(values.source_type)
         ? { url: values.url.trim() }
-        : { content: values.content }),
+        : isContentSourceType(values.source_type)
+          ? { content: values.content }
+          : {}),
     };
     await createMutation.mutateAsync(payload);
   });
@@ -403,10 +461,17 @@ export function SubscriptionPage() {
         header: t("订阅源"),
         cell: (info) => {
           const s = info.row.original;
-          if (s.source_type === "local") {
+          if (isContentSourceType(s.source_type)) {
             return (
               <p className="subscriptions-url-cell" title={t("本地订阅")}>
                 {t("本地订阅")}
+              </p>
+            );
+          }
+          if (isAutoScrapeSourceType(s.source_type)) {
+            return (
+              <p className="subscriptions-url-cell" title={t("自动抓取")}>
+                {t("自动抓取")}
               </p>
             );
           }
@@ -638,9 +703,11 @@ export function SubscriptionPage() {
                 <div className="platform-drawer-section-head">
                   <h4>{t("订阅配置")}</h4>
                   <p>
-                    {editSourceType === "local"
+                    {isContentSourceType(editSourceType)
                       ? t("更新本地订阅配置、刷新周期与状态开关后点击保存。")
-                      : t("更新 URL、刷新周期与状态开关后点击保存。")}
+                      : isAutoScrapeSourceType(editSourceType)
+                        ? t("更新自动抓取配置、刷新周期与状态开关后点击保存。")
+                        : t("更新 URL、刷新周期与状态开关后点击保存。")}
                   </p>
                 </div>
 
@@ -694,7 +761,7 @@ export function SubscriptionPage() {
                     />
                   </div>
 
-                  {editSourceType === "remote" ? (
+                  {supportsCustomUpdateInterval(editSourceType) ? (
                     <>
                       <div className="field-group field-span-2">
                         <label className="field-label" htmlFor="edit-sub-interval">
@@ -702,7 +769,7 @@ export function SubscriptionPage() {
                         </label>
                         <Input
                           id="edit-sub-interval"
-                          placeholder={t("例如 12h")}
+                          placeholder={t(updateIntervalPlaceholder(editSourceType))}
                           invalid={Boolean(editForm.formState.errors.update_interval)}
                           {...editForm.register("update_interval")}
                         />
@@ -711,15 +778,29 @@ export function SubscriptionPage() {
                         ) : null}
                       </div>
 
-                      <div className="field-group field-span-2">
-                        <label className="field-label" htmlFor="edit-sub-url">
-                          {t("订阅链接")}
-                        </label>
-                        <Input id="edit-sub-url" invalid={Boolean(editForm.formState.errors.url)} {...editForm.register("url")} />
-                        {editForm.formState.errors.url?.message ? (
-                          <p className="field-error">{t(editForm.formState.errors.url.message)}</p>
-                        ) : null}
-                      </div>
+                      {isUrlSourceType(editSourceType) ? (
+                        <div className="field-group field-span-2">
+                          <label className="field-label" htmlFor="edit-sub-url">
+                            {t("订阅链接")}
+                          </label>
+                          <Input id="edit-sub-url" invalid={Boolean(editForm.formState.errors.url)} {...editForm.register("url")} />
+                          {editForm.formState.errors.url?.message ? (
+                            <p className="field-error">{t(editForm.formState.errors.url.message)}</p>
+                          ) : null}
+                        </div>
+                      ) : (
+                        <div className="field-group field-span-2">
+                          <div
+                            className="callout"
+                            style={{ justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}
+                          >
+                            <span>{t("自动从所有已启用抓取源聚合代理，不需要填写 URL 或订阅内容。")}</span>
+                            <Link className="btn btn-secondary btn-sm" to="/scraper-sources">
+                              {t("去管理抓取源")}
+                            </Link>
+                          </div>
+                        </div>
+                      )}
                     </>
                   ) : (
                     <div className="field-group field-span-2">
@@ -892,7 +973,7 @@ export function SubscriptionPage() {
                         aria-selected={selected}
                         className={`platform-detail-tab ${selected ? "platform-detail-tab-active" : ""}`}
                         title={t(tab.hint)}
-                        onClick={() => createForm.setValue("source_type", tab.key, { shouldDirty: true, shouldValidate: true })}
+                        onClick={() => handleCreateSourceTypeChange(tab.key)}
                       >
                         <span>{t(tab.label)}</span>
                       </button>
@@ -901,7 +982,7 @@ export function SubscriptionPage() {
                 </div>
               </div>
 
-              {createSourceType === "remote" ? (
+              {supportsCustomUpdateInterval(createSourceType) ? (
                 <>
                   <div className="field-group field-span-2">
                     <label className="field-label" htmlFor="create-sub-interval">
@@ -909,7 +990,7 @@ export function SubscriptionPage() {
                     </label>
                     <Input
                       id="create-sub-interval"
-                      placeholder={t("例如 12h")}
+                      placeholder={t(updateIntervalPlaceholder(createSourceType))}
                       invalid={Boolean(createForm.formState.errors.update_interval)}
                       {...createForm.register("update_interval")}
                     />
@@ -918,19 +999,33 @@ export function SubscriptionPage() {
                     ) : null}
                   </div>
 
-                  <div className="field-group field-span-2">
-                    <label className="field-label" htmlFor="create-sub-url">
-                      {t("订阅链接")}
-                    </label>
-                    <Input
-                      id="create-sub-url"
-                      invalid={Boolean(createForm.formState.errors.url)}
-                      {...createForm.register("url")}
-                    />
-                    {createForm.formState.errors.url?.message ? (
-                      <p className="field-error">{t(createForm.formState.errors.url.message)}</p>
-                    ) : null}
-                  </div>
+                  {isUrlSourceType(createSourceType) ? (
+                    <div className="field-group field-span-2">
+                      <label className="field-label" htmlFor="create-sub-url">
+                        {t("订阅链接")}
+                      </label>
+                      <Input
+                        id="create-sub-url"
+                        invalid={Boolean(createForm.formState.errors.url)}
+                        {...createForm.register("url")}
+                      />
+                      {createForm.formState.errors.url?.message ? (
+                        <p className="field-error">{t(createForm.formState.errors.url.message)}</p>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <div className="field-group field-span-2">
+                      <div
+                        className="callout"
+                        style={{ justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}
+                      >
+                        <span>{t("自动从所有已启用抓取源聚合代理，不需要填写 URL 或订阅内容。")}</span>
+                        <Link className="btn btn-secondary btn-sm" to="/scraper-sources">
+                          {t("去管理抓取源")}
+                        </Link>
+                      </div>
+                    </div>
+                  )}
                 </>
               ) : (
                 <div className="field-group field-span-2">

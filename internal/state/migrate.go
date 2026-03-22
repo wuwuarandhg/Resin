@@ -24,6 +24,7 @@ const (
 	stateVersionAddFixedAccountHeader   = 3
 	stateVersionNormalizeMissAction     = 4
 	stateVersionScraperSources          = 5
+	stateVersionFreeproxyCompatSources  = 6
 	stateLegacyBaselineVersion          = stateVersionAddFixedAccountHeader
 )
 
